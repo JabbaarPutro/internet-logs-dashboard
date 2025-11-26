@@ -1,5 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
+
+const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+// Helper function to get week number of month (1-based)
+const getWeekOfMonth = (date) => {
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+  const dayOfMonth = date.getDate();
+  const firstDayOfWeek = firstDay.getDay();
+  return Math.ceil((dayOfMonth + firstDayOfWeek) / 7);
+};
 
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
@@ -54,16 +64,80 @@ const renderCustomLabel = (props) => {
 
 function ProductivityChart({ data, rawData }) {
   const [selectedDept, setSelectedDept] = useState(null);
-  const [timePeriod, setTimePeriod] = useState('week');
+  const [filterType, setFilterType] = useState('week'); // 'day', 'week', 'month'
+  const [selectedWeek, setSelectedWeek] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState(null);
 
   const handleBarClick = (data) => {
     setSelectedDept(data.department);
     console.log('Department clicked:', data.department);
   };
 
-  const handleTimePeriodChange = (period) => {
-    setTimePeriod(period);
-  };
+  // Generate available weeks and months from the data
+  const { availableWeeks, availableMonths } = useMemo(() => {
+    if (!Array.isArray(rawData) || rawData.length === 0) {
+      return { availableWeeks: [], availableMonths: [] };
+    }
+
+    const weeksSet = new Map();
+    const monthsSet = new Map();
+
+    for (const log of rawData) {
+      const ts = new Date(log.timestamp);
+      if (isNaN(ts.getTime())) continue;
+
+      // Generate month key
+      const monthKey = `${ts.getFullYear()}-${ts.getMonth()}`;
+      const monthLabel = `${MONTH_NAMES[ts.getMonth()]} ${ts.getFullYear()}`;
+      if (!monthsSet.has(monthKey)) {
+        monthsSet.set(monthKey, {
+          key: monthKey,
+          label: monthLabel,
+          year: ts.getFullYear(),
+          month: ts.getMonth()
+        });
+      }
+
+      // Generate week key
+      const weekNum = getWeekOfMonth(ts);
+      const weekKey = `${ts.getFullYear()}-${ts.getMonth()}-W${weekNum}`;
+      const weekLabel = `${MONTH_NAMES[ts.getMonth()]} Minggu ${weekNum}`;
+      if (!weeksSet.has(weekKey)) {
+        weeksSet.set(weekKey, {
+          key: weekKey,
+          label: weekLabel,
+          year: ts.getFullYear(),
+          month: ts.getMonth(),
+          week: weekNum
+        });
+      }
+    }
+
+    // Sort months by date (newest first)
+    const sortedMonths = Array.from(monthsSet.values()).sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.month - a.month;
+    });
+
+    // Sort weeks by date (newest first)
+    const sortedWeeks = Array.from(weeksSet.values()).sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      if (a.month !== b.month) return b.month - a.month;
+      return b.week - a.week;
+    });
+
+    return { availableWeeks: sortedWeeks, availableMonths: sortedMonths };
+  }, [rawData]);
+
+  // Set default selections when data changes
+  useEffect(() => {
+    if (availableWeeks.length > 0 && !selectedWeek) {
+      setSelectedWeek(availableWeeks[0].key);
+    }
+    if (availableMonths.length > 0 && !selectedMonth) {
+      setSelectedMonth(availableMonths[0].key);
+    }
+  }, [availableWeeks, availableMonths, selectedWeek, selectedMonth]);
 
   const localData = useMemo(() => {
     if (!Array.isArray(rawData) || rawData.length === 0) {
@@ -86,20 +160,36 @@ function ProductivityChart({ data, rawData }) {
       return data || [];
     }
 
-    let startDate = null;
-    if (timePeriod === 'day') {
-      startDate = new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
-    } else if (timePeriod === 'week') {
-      startDate = new Date(maxDate.getTime() - 7 * 24 * 60 * 60 * 1000);
-    } else if (timePeriod === 'month') {
-      startDate = new Date(maxDate.getFullYear(), maxDate.getMonth(), 1);
-    }
-
     const map = {};
     for (const log of rawData) {
       const ts = new Date(log.timestamp);
       if (isNaN(ts.getTime())) continue;
-      if (startDate && ts < startDate) continue;
+
+      let shouldInclude = false;
+
+      if (filterType === 'day') {
+        // Show data from the most recent day
+        const startDate = new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
+        shouldInclude = ts >= startDate;
+      } else if (filterType === 'week' && selectedWeek) {
+        // Parse selected week
+        const weekInfo = availableWeeks.find(w => w.key === selectedWeek);
+        if (weekInfo) {
+          const logWeek = getWeekOfMonth(ts);
+          shouldInclude = ts.getFullYear() === weekInfo.year && 
+                          ts.getMonth() === weekInfo.month && 
+                          logWeek === weekInfo.week;
+        }
+      } else if (filterType === 'month' && selectedMonth) {
+        // Parse selected month
+        const monthInfo = availableMonths.find(m => m.key === selectedMonth);
+        if (monthInfo) {
+          shouldInclude = ts.getFullYear() === monthInfo.year && 
+                          ts.getMonth() === monthInfo.month;
+        }
+      }
+
+      if (!shouldInclude) continue;
 
       const dept = log.department || 'Unknown';
       if (!map[dept]) map[dept] = { department: dept, productive: 0, unproductive: 0, total: 0 };
@@ -120,7 +210,7 @@ function ProductivityChart({ data, rawData }) {
 
     out.sort((a, b) => parseFloat(b.productivityRate) - parseFloat(a.productivityRate));
     return out;
-  }, [rawData, timePeriod, data]);
+  }, [rawData, filterType, selectedWeek, selectedMonth, data, availableWeeks, availableMonths]);
 
   return (
     <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 border border-gray-100">
@@ -138,21 +228,52 @@ function ProductivityChart({ data, rawData }) {
         </div>
         
         {/* Time Period Filter */}
-        <div className="flex gap-1.5 sm:gap-2">
-          {['day', 'week', 'month'].map((period) => (
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 items-center">
+          {/* Filter Type Buttons */}
+          {['day', 'week', 'month'].map((type) => (
             <button
-              key={period}
-              onClick={() => handleTimePeriodChange(period)}
+              key={type}
+              onClick={() => setFilterType(type)}
               className={`px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-semibold rounded-md sm:rounded-lg transition-all ${
-                timePeriod === period
+                filterType === type
                   ? 'text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
-              style={{ backgroundColor: timePeriod === period ? '#14B8A6' : undefined }}
+              style={{ backgroundColor: filterType === type ? '#14B8A6' : undefined }}
             >
-              {period.charAt(0).toUpperCase() + period.slice(1)}
+              {type === 'day' ? 'Day' : type === 'week' ? 'Week' : 'Month'}
             </button>
           ))}
+          
+          {/* Week Dropdown */}
+          {filterType === 'week' && availableWeeks.length > 0 && (
+            <select
+              value={selectedWeek || ''}
+              onChange={(e) => setSelectedWeek(e.target.value)}
+              className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-semibold rounded-md sm:rounded-lg border border-gray-300 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              {availableWeeks.map((week) => (
+                <option key={week.key} value={week.key}>
+                  {week.label}
+                </option>
+              ))}
+            </select>
+          )}
+          
+          {/* Month Dropdown */}
+          {filterType === 'month' && availableMonths.length > 0 && (
+            <select
+              value={selectedMonth || ''}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-semibold rounded-md sm:rounded-lg border border-gray-300 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              {availableMonths.map((month) => (
+                <option key={month.key} value={month.key}>
+                  {month.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
