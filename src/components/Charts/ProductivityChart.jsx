@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 
 const CustomTooltip = ({ active, payload }) => {
@@ -70,14 +70,29 @@ function ProductivityChart({ data, rawData }) {
       return data || [];
     }
 
-    const now = new Date();
+    // Find the most recent date in the data to use as reference point
+    let maxDate = null;
+    for (const log of rawData) {
+      const ts = new Date(log.timestamp);
+      if (!isNaN(ts.getTime())) {
+        if (!maxDate || ts > maxDate) {
+          maxDate = ts;
+        }
+      }
+    }
+
+    // If no valid dates found, return all data
+    if (!maxDate) {
+      return data || [];
+    }
+
     let startDate = null;
     if (timePeriod === 'day') {
-      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      startDate = new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
     } else if (timePeriod === 'week') {
-      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      startDate = new Date(maxDate.getTime() - 7 * 24 * 60 * 60 * 1000);
     } else if (timePeriod === 'month') {
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      startDate = new Date(maxDate.getFullYear(), maxDate.getMonth(), 1);
     }
 
     const map = {};
