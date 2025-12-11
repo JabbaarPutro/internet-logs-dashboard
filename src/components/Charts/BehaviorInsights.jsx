@@ -30,8 +30,8 @@ function BehaviorInsights({ rawData }) {
       const username = log.username || 'Unknown';
       const action = log.action || 'Unknown';
       
-      // Work hours analysis (9-17)
-      if (hour >= 9 && hour < 17) {
+      // Work hours analysis (8-16)
+      if (hour >= 8 && hour < 16) {
         workHours.count++;
         workHours.bandwidth += bandwidth;
       } else {
@@ -87,7 +87,7 @@ function BehaviorInsights({ rawData }) {
     return {
       workHours: {
         data: [
-          { name: 'Jam Kerja\n(09:00-17:00)', value: workHours.count, percentage: workHoursPercentage },
+          { name: 'Jam Kerja\n(08:00-16:00)', value: workHours.count, percentage: workHoursPercentage },
           { name: 'Di Luar Jam Kerja', value: nonWorkHours.count, percentage: (100 - workHoursPercentage).toFixed(1) }
         ]
       },
