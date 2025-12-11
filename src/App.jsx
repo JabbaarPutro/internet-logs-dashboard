@@ -98,9 +98,6 @@ function App() {
       setLoading(false);
     }
   };
-
-
-
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #14B8A6 0%, #0d9488 50%, #0f766e 100%)' }}>
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">

@@ -98,12 +98,14 @@ function ActivityHeatmap({ rawData }) {
   }, [rawData]);
 
   const getColorIntensity = (intensity) => {
-    if (intensity === 0) return '#F3F4F6';
-    if (intensity < 0.2) return '#CCFBF1';
-    if (intensity < 0.4) return '#99F6E4';
-    if (intensity < 0.6) return '#5EEAD4';
-    if (intensity < 0.8) return '#2DD4BF';
-    return '#14B8A6';
+    if (intensity === 0) return '#F3F4F6'; 
+    if (intensity < 0.15) return '#D1FAE5'; 
+    if (intensity < 0.3) return '#A7F3D0';  
+    if (intensity < 0.45) return '#6EE7B7';
+    if (intensity < 0.6) return '#34D399'; 
+    if (intensity < 0.75) return '#10B981'; 
+    if (intensity < 0.9) return '#059669';  
+    return '#047857';                        
   };
 
   return (
