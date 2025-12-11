@@ -46,6 +46,73 @@ function parseCSV(csvText) {
   const lines = csvText.split('\n').filter(line => line.trim());
   if (lines.length < 2) return [];
   
+  // Find the header line (starts with "Rank;Username;")
+  let headerIndex = -1;
+  for (let i = 0; i < Math.min(30, lines.length); i++) {
+    if (lines[i].includes('Rank;Username;Group Name')) {
+      headerIndex = i;
+      break;
+    }
+  }
+  
+  // If no header found, try old format
+  if (headerIndex === -1) {
+    return parseOldCSVFormat(csvText);
+  }
+  
+  console.log(`📋 Found header at line ${headerIndex + 1}`);
+  
+  const headers = lines[headerIndex].split(';').map(h => h.trim().replace(/"/g, ''));
+  const data = [];
+  let successCount = 0;
+  let errorCount = 0;
+  
+  for (let i = headerIndex + 1; i < lines.length; i++) {
+    try {
+      const values = parseCSVLineSemicolon(lines[i]);
+      if (values.length >= 11) {
+        // Extract clean username from format like "sutarmo(sutarmo)" or "user(name)"
+        let cleanUsername = values[1];
+        const usernameMatch = values[1].match(/^([^(]+)/);
+        if (usernameMatch) {
+          cleanUsername = usernameMatch[1].trim();
+        }
+        
+        const record = {
+          rank: values[0],
+          username: cleanUsername,
+          group_name: values[2],
+          source_ip: values[3],
+          endpoint_device: values[4],
+          location: values[5],
+          dst_ip: values[6],
+          app_category: values[7],
+          application: values[8],
+          action: values[9],
+          timestamp: values[10],
+          details: values[11] || '',
+          bandwidth: 0 // Set default bandwidth
+        };
+        data.push(record);
+        successCount++;
+      }
+    } catch (err) {
+      errorCount++;
+      if (errorCount <= 5) {
+        console.warn(`⚠️ Error parsing line ${i + 1}:`, err.message);
+      }
+    }
+  }
+  
+  console.log(`✅ Parsed ${successCount} records successfully${errorCount > 0 ? `, ${errorCount} errors` : ''}`);
+  
+  return data;
+}
+
+function parseOldCSVFormat(csvText) {
+  const lines = csvText.split('\n').filter(line => line.trim());
+  if (lines.length < 2) return [];
+  
   const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
   const data = [];
   
@@ -93,18 +160,109 @@ function parseCSVLine(line) {
   return result;
 }
 
+function parseCSVLineSemicolon(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ';' && !inQuotes) {
+      result.push(current.trim().replace(/^"|"$/g, ''));
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  result.push(current.trim().replace(/^"|"$/g, ''));
+  return result;
+}
+
 function parseExcel(arrayBuffer) {
   const workbook = XLSX.read(arrayBuffer, { type: 'array' });
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
-  const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+  const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+  
+  console.log(`📊 Excel sheet loaded: ${jsonData.length} rows`);
   
   if (jsonData.length < 2) return [];
   
+  // Find the header line (contains "Rank", "Username", "Group Name", etc.)
+  let headerIndex = -1;
+  for (let i = 0; i < Math.min(30, jsonData.length); i++) {
+    const row = jsonData[i];
+    if (row && row.length > 0) {
+      const firstCells = row.slice(0, 5).map(cell => String(cell || '').toLowerCase());
+      if (firstCells.includes('rank') && firstCells.includes('username')) {
+        headerIndex = i;
+        console.log(`📋 Found header at row ${i + 1}`);
+        break;
+      }
+    }
+  }
+  
+  // If header not found with new format, try old format
+  if (headerIndex === -1) {
+    console.log('🔄 Trying old Excel format...');
+    return parseOldExcelFormat(jsonData);
+  }
+  
+  const data = [];
+  let successCount = 0;
+  let errorCount = 0;
+  
+  for (let i = headerIndex + 1; i < jsonData.length; i++) {
+    try {
+      const row = jsonData[i];
+      if (row && row.length >= 11) {
+        // Extract clean username from format like "sutarmo(sutarmo)" or "user(name)"
+        let cleanUsername = String(row[1] || '');
+        const usernameMatch = cleanUsername.match(/^([^(]+)/);
+        if (usernameMatch) {
+          cleanUsername = usernameMatch[1].trim();
+        }
+        
+        const record = {
+          rank: String(row[0] || ''),
+          username: cleanUsername,
+          group_name: String(row[2] || ''),
+          source_ip: String(row[3] || ''),
+          endpoint_device: String(row[4] || ''),
+          location: String(row[5] || ''),
+          dst_ip: String(row[6] || ''),
+          app_category: String(row[7] || ''),
+          application: String(row[8] || ''),
+          action: String(row[9] || ''),
+          timestamp: String(row[10] || ''),
+          details: String(row[11] || ''),
+          bandwidth: 0
+        };
+        data.push(record);
+        successCount++;
+      }
+    } catch (err) {
+      errorCount++;
+      if (errorCount <= 5) {
+        console.warn(`⚠️ Error parsing row ${i + 1}:`, err.message);
+      }
+    }
+  }
+  
+  console.log(`✅ Parsed ${successCount} records from Excel${errorCount > 0 ? `, ${errorCount} errors` : ''}`);
+  
+  return data;
+}
+
+function parseOldExcelFormat(jsonData) {
   const data = [];
   for (let i = 1; i < jsonData.length; i++) {
     const row = jsonData[i];
-    if (row.length >= 10) {
+    if (row && row.length >= 10) {
       const record = {
         timestamp: row[0],
         user_id: row[1],
@@ -120,7 +278,6 @@ function parseExcel(arrayBuffer) {
       data.push(record);
     }
   }
-  
   return data;
 }
 

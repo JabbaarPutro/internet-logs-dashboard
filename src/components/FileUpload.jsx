@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { generateCSVTemplate } from '../utils/dataTemplate';
+import { downloadCSVTemplate } from '../utils/dataTemplate';
 import * as XLSX from 'xlsx';
 
 function FileUpload({ onFileLoad, uploadProgress, loading }) {
@@ -109,32 +109,17 @@ function FileUpload({ onFileLoad, uploadProgress, loading }) {
 
         <button
           onClick={() => {
-            try {
-              const csv = generateCSVTemplate(200);
-              const rows = csv.split('\n').map(line => {
-                if (line.indexOf('\",\"') !== -1) {
-                  return line.replace(/^\"|\"$/g, '').split('\",\"');
-                }
-                return line.split(',');
-              });
-
-              const wb = XLSX.utils.book_new();
-              const ws = XLSX.utils.aoa_to_sheet(rows);
-              XLSX.utils.book_append_sheet(wb, ws, 'Template');
-              XLSX.writeFile(wb, 'internet_logs_template.xlsx');
-            } catch (err) {
-              console.error('Error generating XLSX template:', err);
-            }
+            downloadCSVTemplate();
           }}
           disabled={loading}
           className="ml-3 bg-white text-gray-800 font-semibold py-2.5 sm:py-3 lg:py-4 px-4 sm:px-5 rounded-lg border border-gray-200 shadow-sm hover:shadow-md text-sm sm:text-base transition-all"
-          aria-label="Download template XLSX"
+          aria-label="Download template CSV"
         >
           <span className="flex items-center gap-2">
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v12m0 0l-4-4m4 4l4-4M21 21H3" />
             </svg>
-            Download Template (XLSX)
+            Download Template (CSV)
           </span>
         </button>
         
@@ -178,24 +163,6 @@ function FileUpload({ onFileLoad, uploadProgress, loading }) {
         </div>
       )}
       
-      <div className="mt-4 sm:mt-6 bg-gray-50 rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-gray-200">
-        <p className="text-xs sm:text-sm font-bold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">
-          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Format Data yang Dibutuhkan:
-        </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5 sm:gap-2 text-xs">
-          {['timestamp', 'user_id', 'ip_address', 'department', 'website', 'category', 'duration_minutes', 'bandwidth_mb', 'device_type', 'is_productive'].map((col, i) => (
-            <div 
-              key={i} 
-              className="bg-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-gray-700 font-mono font-medium text-center border border-gray-200 hover:border-primary-300 transition-colors break-all"
-            >
-              {col}
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

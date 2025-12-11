@@ -1,8 +1,8 @@
 function SummaryCards({ summary }) {
   const cards = [
     { 
-      title: 'Total Records', 
-      value: summary.totalRecords.toLocaleString(), 
+      title: 'Total Activities', 
+      value: summary.totalActivities?.toLocaleString() || '0', 
       percentage: '+2.5',
       isPositive: true,
       bgColor: '#DBEAFE',
@@ -17,9 +17,8 @@ function SummaryCards({ summary }) {
       )
     },
     { 
-      title: 'Total Bandwidth', 
-      value: `${(summary.totalBandwidth / 1000).toFixed(2)}`, 
-      unit: 'GB',
+      title: 'Unique Users', 
+      value: summary.uniqueUsers?.toLocaleString() || '0', 
       percentage: '+0.5',
       isPositive: true,
       bgColor: '#F0FDFA',
@@ -29,31 +28,30 @@ function SummaryCards({ summary }) {
       sparklineData: [30, 40, 35, 50, 45, 55, 60],
       icon: (
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5 sm:w-7 sm:h-7">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
         </svg>
       )
     },
     { 
-      title: 'Total Duration', 
-      value: `${(summary.totalDuration / 60).toFixed(1)}`, 
-      unit: 'hrs',
+      title: 'Rejected Activities', 
+      value: summary.rejectedCount?.toLocaleString() || '0', 
       percentage: '-0.2',
       isPositive: false,
-      bgColor: '#F5F3FF',
-      iconColor: '#8B5CF6',
+      bgColor: '#FEE2E2',
+      iconColor: '#EF4444',
       gradientFrom: '#EF4444',
       gradientTo: '#DC2626',
       sparklineData: [50, 48, 45, 43, 40, 38, 36],
       icon: (
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5 sm:w-7 sm:h-7">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
         </svg>
       )
     },
     { 
-      title: 'Productivity Rate', 
-      value: `${summary.productivityRate}`, 
-      unit: '%',
+      title: 'Top Category', 
+      value: summary.topCategory || 'N/A', 
+      unit: '',
       percentage: '+0.12',
       isPositive: true,
       bgColor: '#FEF3C7',
@@ -63,7 +61,7 @@ function SummaryCards({ summary }) {
       sparklineData: [40, 42, 45, 48, 50, 53, 55],
       icon: (
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5 sm:w-7 sm:h-7">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
         </svg>
       )
     },
